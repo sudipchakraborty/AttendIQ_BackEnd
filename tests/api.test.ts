@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import net from 'node:net';
+import { createHmac } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 
 test('Node API preserves auth, roles, persistence, versions, limits and SMTP contract', async () => {
@@ -12,15 +13,17 @@ test('Node API preserves auth, roles, persistence, versions, limits and SMTP con
   const { loadConfig } = await import('../src/config.js');
   const dir = mkdtempSync(join(tmpdir(), 'attendiq-api-'));
   const store = openStore(dir);
-  const config = loadConfig({ ATTENDIQ_STORAGE: dir });
+  const config = loadConfig({ ATTENDIQ_STORAGE: dir, ATTENDIQ_GATEWAY_SECRET: 'a'.repeat(64) });
   const app = createApp(config, store);
   const server = app.listen(0, '127.0.0.1');
   await new Promise<void>(r => server.once('listening', r));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  function client() {
+  function client(ip?: string) {
     let cookie = '', csrf = '';
     return async (route: string, method = 'GET', body?: unknown, omit = false) => {
-      const res = await fetch(`${base}/api${route}`, { method, headers: { Cookie: cookie, 'Content-Type': 'application/json', 'X-CSRF-Token': omit ? '' : csrf }, body: method === 'GET' ? undefined : JSON.stringify(body || {}) });
+      const timestamp = String(Date.now());
+      const forwarded: Record<string, string> = ip ? { 'X-AttendIQ-Client-IP': ip, 'X-AttendIQ-Timestamp': timestamp, 'X-AttendIQ-Signature': createHmac('sha256', config.gatewaySecret).update(`${timestamp}\n${ip}`).digest('hex') } : {};
+      const res = await fetch(`${base}/api${route}`, { method, headers: { Cookie: cookie, 'Content-Type': 'application/json', 'X-CSRF-Token': omit ? '' : csrf, ...forwarded }, body: method === 'GET' ? undefined : JSON.stringify(body || {}) });
       const header = res.headers.get('set-cookie'); if (header) cookie = header.split(';')[0];
       const data = await res.json(); if (data.csrfToken) csrf = data.csrfToken;
       return { status: res.status, data, header };
@@ -89,6 +92,11 @@ test('Node API preserves auth, roles, persistence, versions, limits and SMTP con
     assert.equal((await admin('/auth/password', 'PUT', { currentPassword: password, password: password + 'new' })).status, 200);
     assert.equal((await other('/defaults')).status, 401);
     assert.equal((await admin('/defaults')).status, 200);
+    const gatewayA = client('198.51.100.1'), gatewayB = client('198.51.100.2');
+    await gatewayA('/auth/session'); await gatewayB('/auth/session');
+    for (let i = 0; i < 40; i++) assert.equal((await gatewayA('/auth/login', 'POST', {email: owner.email, password: password + 'new'})).status, 200);
+    assert.equal((await gatewayA('/auth/login', 'POST', {email: owner.email, password: password + 'new'})).status, 429);
+    assert.equal((await gatewayB('/auth/login', 'POST', {email: owner.email, password: password + 'new'})).status, 200, 'Another gateway client must retain its own login quota');
     assert.equal((await admin('/auth/logout', 'POST')).status, 200);
     assert.equal((await admin('/defaults')).status, 401);
     await other('/auth/session');

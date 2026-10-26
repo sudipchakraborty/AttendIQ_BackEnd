@@ -8,7 +8,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   return {
     port, host: env.HOST || '127.0.0.1', production,
     storage: resolve(env.ATTENDIQ_STORAGE || '.attendiq'),
-    secureCookies: production, origins,
+    secureCookies: production, origins, gatewaySecret: env.ATTENDIQ_GATEWAY_SECRET || '',
     trustProxy: env.TRUST_PROXY === '1',
     smtp: { host: env.SMTP_HOST || '', port: Number(env.SMTP_PORT || 587), secure: env.SMTP_SECURE === 'true', user: env.SMTP_USER || '', password: env.SMTP_PASSWORD || '', from: env.SMTP_FROM || '' }
   };

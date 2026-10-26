@@ -5,15 +5,17 @@ import type { Context } from './auth.js';
 import { csrf } from './auth.js';
 import { ApiError, permissions, publicUser, permit, text, email, password, verify, equal, randomId, audit, limit, checkVersion } from './security.js';
 import { sendSupport } from './support.js';
+import { clientAddress } from './gateway.js';
 
 export async function route(req: Request, ctx: Context, store: Store, config: Config, path: string) {
   const method = req.method, body: Record<string, unknown> = req.body || {}, user = ctx.user;
+  const clientIp = clientAddress(req, config.gatewaySecret);
   const authResponse = (u: User) => ({ user: publicUser(u), permissions: permissions[u.role], csrfToken: ctx.session.csrf, setupRequired: false });
   const login = (u: User) => { ctx.rotate(u); ctx.persist(); return authResponse(u); };
   if (path === '/auth/session' && method === 'GET') return { user: user ? publicUser(user) : null, permissions: user ? permissions[user.role] : [], csrfToken: ctx.session.csrf, setupRequired: !store.read().users.length };
   if (method !== 'GET') csrf(req, ctx);
   if (path === '/auth/setup' && method === 'POST') {
-    const allowed = store.transaction(s => limit(s, `setup:${req.ip}`, 10, 900000));
+    const allowed = store.transaction(s => limit(s, `setup:${clientIp}`, 10, 900000));
     if (!allowed) throw new ApiError(429, 'Too many setup attempts. Try again later.');
     if (!equal(body.token, store.setupToken())) throw new ApiError(403, 'Invalid installation token.');
     const name = text(body.name, 'Name'), mail = email(body.email), hash = password(body.password);
@@ -25,8 +27,8 @@ export async function route(req: Request, ctx: Context, store: Store, config: Co
     return login(created);
   }
   if (path === '/auth/login' && method === 'POST') {
-    const mail = email(body.email), key = `login:${mail}|${req.ip}`;
-    const allowed = store.transaction(s => limit(s, `login-ip:${req.ip}`, 40, 900000) && limit(s, key, 10, 900000));
+    const mail = email(body.email), key = `login:${mail}|${clientIp}`;
+    const allowed = store.transaction(s => limit(s, `login-ip:${clientIp}`, 40, 900000) && limit(s, key, 10, 900000));
     if (!allowed) throw new ApiError(429, 'Too many login attempts. Try again in 15 minutes.');
     const found = store.read().users.find(u => u.email === mail && u.active);
     const valid = verify(body.password, found?.passwordHash);

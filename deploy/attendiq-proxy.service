@@ -1,0 +1,24 @@
+[Unit]
+Description=AttendIQ dedicated HTTPS proxy (separate from shared Nginx)
+After=network.target attendiq-backend.service
+Wants=attendiq-backend.service
+
+[Service]
+Type=forking
+PIDFile=/run/attendiq-proxy.pid
+ExecStartPre=/usr/sbin/nginx -t -p /opt/attendiq/proxy/ -c nginx.conf
+ExecStart=/usr/sbin/nginx -p /opt/attendiq/proxy/ -c nginx.conf
+ExecReload=/usr/sbin/nginx -s reload -p /opt/attendiq/proxy/ -c nginx.conf
+ExecStop=/bin/kill -s QUIT $MAINPID
+Restart=on-failure
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/run /var/log/attendiq /var/lib/attendiq-proxy
+MemoryMax=128M
+CPUQuota=50%
+TasksMax=16
+
+[Install]
+WantedBy=multi-user.target

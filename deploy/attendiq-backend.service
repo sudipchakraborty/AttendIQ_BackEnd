@@ -1,0 +1,33 @@
+[Unit]
+Description=AttendIQ dedicated Node.js backend
+After=network.target
+
+[Service]
+Type=simple
+User=attendiq
+Group=attendiq
+WorkingDirectory=/opt/attendiq/current
+EnvironmentFile=/etc/attendiq/backend.env
+ExecStart=/opt/attendiq/runtime/bin/node dist/src/server.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=25
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/attendiq
+MemoryMax=512M
+CPUQuota=100%
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target
