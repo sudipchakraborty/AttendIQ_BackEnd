@@ -1,5 +1,24 @@
 # Backend progress
 
+## 2026-10-28 — frontend standalone mode
+
+- User requested frontend-only calculations while cloud backend connectivity is unresolved. Frontend now defaults to an upload-driven attendance/leave calculator without login or API calls; no backend runtime changes were necessary.
+- Existing backend authentication and permission checks remain unchanged. Re-enable the connected frontend with build/start setting `VITE_STANDALONE=false` after backend availability is restored.
+- Frontend static-browser tests passed with API access blocked; connected management/report regressions and the login regression also passed. Cloud SSH/9443 connectivity remains unresolved and is no longer required for the standalone calculator.
+- Progress notes include the earlier cloud investigation; no credentials are recorded in project files.
+
+## 2026-10-28 — Contabo connectivity follow-up
+
+- Attempted authorized SSH connection on standard port 22; timed out before authentication. Credentials were not saved to disk.
+- DNS points socket.sukalyanai.com to the supplied Contabo IP. TCP 80/443 are reachable; TCP 22/9443 time out from this environment. Existing nginx HTTPS listener returns 404 for /ready.
+- Server is reachable on web ports; exact SSH/AttendIQ failure still requires host-side listener, firewall, and service diagnostics. Requested custom SSH port or Contabo console output for ss, ufw status, and ssh/AttendIQ systemctl status. No server changes made.
+
+## 2026-10-28 — cloud API availability investigation
+
+- Live Hostinger session gateway returns HTTP 502. Direct public backend /ready and /api/auth/session requests on socket.sukalyanai.com:9443 timed out after 20 seconds from this execution environment.
+- Backend GitHub workflow verifies tests/build only; pushing main does not deploy or restart Contabo. Service/proxy/network state must be inspected before choosing a fix.
+- Requested systemctl status for attendiq-backend and attendiq-proxy, loopback readiness on 3201, and recent journal entries or an existing SSH connection. No cloud service changes or bypass enablement performed.
+
 ## 2026-10-28 — commit and push preparation
 
 - Reviewed pending changes and fetched origin; local main matched origin/main before committing.
