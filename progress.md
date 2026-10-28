@@ -2,6 +2,8 @@
 
 ## 2026-10-28 — frontend standalone mode
 
+- Frontend code commit `353cd51` deployed successfully through Hostinger run `40666061901`. Live Chrome verified report and leave calculations from an in-memory attendance upload with zero API requests, independently of backend availability.
+
 - User requested frontend-only calculations while cloud backend connectivity is unresolved. Frontend now defaults to an upload-driven attendance/leave calculator without login or API calls; no backend runtime changes were necessary.
 - Existing backend authentication and permission checks remain unchanged. Re-enable the connected frontend with build/start setting `VITE_STANDALONE=false` after backend availability is restored.
 - Frontend static-browser tests passed with API access blocked; connected management/report regressions and the login regression also passed. Cloud SSH/9443 connectivity remains unresolved and is no longer required for the standalone calculator.
