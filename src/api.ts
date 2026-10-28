@@ -12,7 +12,7 @@ export async function route(req: Request, ctx: Context, store: Store, config: Co
   const clientIp = clientAddress(req, config.gatewaySecret);
   const authResponse = (u: User) => ({ user: publicUser(u), permissions: permissions[u.role], csrfToken: ctx.session.csrf, setupRequired: false });
   const login = (u: User) => { ctx.rotate(u); ctx.persist(); return authResponse(u); };
-  if (path === '/auth/session' && method === 'GET') return { user: user ? publicUser(user) : null, permissions: user ? permissions[user.role] : [], csrfToken: ctx.session.csrf, setupRequired: !store.read().users.length };
+  if (path === '/auth/session' && method === 'GET') return { user: user ? publicUser(user) : null, permissions: user ? permissions[user.role] : [], csrfToken: ctx.session.csrf, setupRequired: !config.developmentBypass && !store.read().users.length, developmentBypass: config.developmentBypass };
   if (method !== 'GET') csrf(req, ctx);
   if (path === '/auth/setup' && method === 'POST') {
     const allowed = store.transaction(s => limit(s, `setup:${clientIp}`, 10, 900000));

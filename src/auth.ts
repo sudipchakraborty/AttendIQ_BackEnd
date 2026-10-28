@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import type { Config } from './config.js';
 import type { Store, Session, User } from './store.js';
 import { equal, randomToken, ApiError } from './security.js';
+import { developmentUser } from './development-auth.js';
 export interface Context { session: Session; user: User | null; rotate(user?: User): void; persist(): void }
 export function sessionMiddleware(config: Config, store: Store) {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -17,7 +18,7 @@ export function sessionMiddleware(config: Config, store: Store) {
     if (session.userId && !user) { store.deleteSession(id); id = randomToken(); session = { csrf: randomToken(), createdAt: now, lastSeen: now }; }
     session.lastSeen = now;
     const context: Context = {
-      session, user,
+      session, user: developmentUser(config.developmentBypass) || user,
       rotate(account) {
         store.deleteSession(id); id = randomToken();
         context.session = { csrf: randomToken(), createdAt: Date.now(), lastSeen: Date.now(), ...(account ? { userId: account.id, authVersion: account.authVersion } : {}) };
